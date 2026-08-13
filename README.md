@@ -105,14 +105,20 @@ work because it benefits from holding a lot of cross-file context at once (a val
 changed in one place has to stay in sync in three others) and because correctness matters more
 than iteration speed for anything that touches user data or security.
 
-**Cursor — `[FILL IN: which model you ran, e.g. GPT-5 / Claude / Composer]`** — tasked with
-reworking and polishing `Frontend/src/components/SignUpForm.tsx` and `Confirmation.tsx`: visual
-polish, micro-interactions (loading spinner, animated field errors), and an accessibility pass,
-built against the fixed contract in `src/lib/types.ts` (`SignupPayload`) and
-`src/lib/validation.ts` (`signupFormSchema`) so the result can't drift from what the backend
-expects. Delegated because this is the most iteration-heavy, visually-driven, and decoupled part
-of the app — the part of the build where a fast inline-diff loop pays off more than deep
-cross-file reasoning does.
+**Cursor, running Grok 4.6** — tasked with reworking and polishing
+`Frontend/src/components/SignUpForm.tsx` and `Confirmation.tsx`: a real loading spinner on
+submit, fade/slide transitions on field errors, a fix for a stale-server-error bug (the error
+banner wasn't clearing on a new submit attempt if client-side validation failed first), an
+`aria-live="assertive"` region for the server-error banner, and a success-checkmark animation on
+the confirmation screen with keyboard focus moved to its heading for screen-reader users. Given
+the fixed contract in `src/lib/types.ts` (`SignupPayload`) and `src/lib/validation.ts`
+(`signupFormSchema`) up front, plus explicit "don't touch" boundaries (honeypot, validation
+rules, `Backend/`), so the result couldn't drift from what the backend expects. Delegated because
+this is the most iteration-heavy, visually-driven, and decoupled part of the app — the part of
+the build where a fast inline-diff loop pays off more than deep cross-file reasoning does. It also
+handled a small follow-up well: repositioning the hero photo's crop (`background-position`) after
+a one-line "I can't see the people, just water" note — the kind of fast, low-stakes visual
+iteration this split was designed for.
 
 **Rejected/corrected AI output:** the first version of the generated topographic background
 pattern (`Frontend/src/assets/topo-pattern.svg`) used a dark charcoal stroke, written on the
