@@ -11,7 +11,7 @@
     linear-gradient(0deg, rgba(31, 42, 51, 0.6) 0%, rgba(31, 42, 51, 0) 35%),
     url("../assets/trip-crew.jpg");
   background-repeat: no-repeat, no-repeat, no-repeat;
-  background-position: center, center, center 30%;
+  background-position: center, center, center 55%;
   background-size: cover, cover, cover;
   color: var(--color-white);
   overflow: hidden;
