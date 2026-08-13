@@ -130,7 +130,7 @@ export const trips: Trip[] = [
     ],
     builderNote: {
       quote:
-        "Ask me about the build, and I'll tell you about the river instead — that's usually how it goes.",
+        "I didn't want to come on this trip, but in the end I found that real joy comes from forgetting about myself and serving others — and I made life-long friends in the process.",
       attribution: "— Garren, 17 years old",
     },
   },
