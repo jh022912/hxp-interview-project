@@ -37,8 +37,6 @@ export function SignUpForm({ tripId, tripName }: SignUpFormProps) {
   }
 
   const onSubmit = async (values: SignupFormValues) => {
-    setServerError(null);
-
     const payload: SignupPayload = {
       tripId,
       fullName: values.fullName,
@@ -67,7 +65,16 @@ export function SignUpForm({ tripId, tripName }: SignUpFormProps) {
         <p className="eyebrow">Sign Up</p>
         <h2 className={styles.heading}>Tell us about you</h2>
 
-        <form className={`card ${styles.form}`} onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form
+          className={`card ${styles.form}`}
+          onSubmit={(event) => {
+            // Clear any previous API error on every submit attempt — including
+            // ones that fail client-side validation and never reach onSubmit.
+            setServerError(null);
+            void handleSubmit(onSubmit)(event);
+          }}
+          noValidate
+        >
           {/* Honeypot: visually hidden (not display:none) so real users never see or fill it */}
           <div className={styles.honeypot} aria-hidden="true">
             <label htmlFor="website">Leave this field blank</label>
@@ -207,13 +214,17 @@ export function SignUpForm({ tripId, tripName }: SignUpFormProps) {
             )}
           </div>
 
-          {serverError && (
-            <p className={styles.serverError} role="alert">
-              {serverError}
-            </p>
-          )}
+          <p className={styles.serverError} role="alert" aria-live="assertive" aria-atomic="true">
+            {serverError}
+          </p>
 
-          <button className="btn btn-primary" type="submit" disabled={isSubmitting}>
+          <button
+            className="btn btn-primary"
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+          >
+            {isSubmitting && <span className={styles.spinner} aria-hidden="true" />}
             {isSubmitting ? "Submitting…" : "Submit Sign-Up"}
           </button>
         </form>

@@ -8,6 +8,7 @@
 }
 
 .form {
+  position: relative;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -37,6 +38,7 @@
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
+  transition: border-color 150ms ease;
 }
 
 .field input[aria-invalid="true"],
@@ -48,14 +50,40 @@
   color: var(--color-error);
   font-size: 0.8rem;
   margin: 0;
+  animation: errorIn 180ms ease-out;
 }
 
 .serverError {
+  margin: 0;
+}
+
+.serverError:not(:empty) {
   color: var(--color-error);
   background: var(--color-error-bg);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
-  margin: 0;
+  animation: errorIn 180ms ease-out;
+}
+
+.serverError:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+}
+
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-block-start-color: var(--color-white);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 .honeypot {
@@ -66,6 +94,36 @@
   opacity: 0;
   pointer-events: none;
   left: -9999px;
+}
+
+@keyframes errorIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error,
+  .serverError:not(:empty) {
+    animation: none;
+  }
+
+  .spinner {
+    animation: none;
+    border-color: var(--color-white);
+    opacity: 0.7;
+  }
 }
 
 @media (min-width: 640px) {

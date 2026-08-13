@@ -5,6 +5,35 @@
 .card {
   padding: var(--space-7);
   text-align: center;
+  animation: confirmIn 480ms ease-out;
+}
+
+.icon {
+  display: flex;
+  justify-content: center;
+  margin-block-end: var(--space-4);
+}
+
+.icon svg {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.icon circle {
+  fill: var(--color-success-bg);
+  stroke: var(--color-success);
+  stroke-width: 2;
+}
+
+.icon path {
+  fill: none;
+  stroke: var(--color-success);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 32;
+  stroke-dashoffset: 32;
+  animation: checkDraw 420ms 220ms ease-out forwards;
 }
 
 .badge {
@@ -26,8 +55,46 @@
   margin-block-end: var(--space-3);
 }
 
+.heading:focus {
+  outline: none;
+}
+
+.heading:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .body {
   color: var(--color-charcoal-soft);
   max-width: 48ch;
   margin-inline: auto;
+}
+
+@keyframes confirmIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes checkDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+
+  .icon path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
