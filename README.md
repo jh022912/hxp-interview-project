@@ -177,8 +177,6 @@ Threats considered, and what's mitigated today:
   build — honeypot + rate limit was the scoped choice for the time budget).
 - Server-side structured logging/alerting on repeated validation failures from the same hash,
   which would catch a probing attacker before they succeed.
-- A CSP `connect-src` currently allows `https://*.vercel.app` as a pragmatic default before the
-  Backend's final URL was known — tighten this to the exact deployed Backend origin once fixed.
 
 ## What's left / known limitations
 
