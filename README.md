@@ -33,8 +33,12 @@ accepts requests from `ALLOWED_ORIGIN` (CORS). Neither folder depends on the oth
 cd Backend
 npm install
 cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, IP_HASH_SALT, ALLOWED_ORIGIN
-npm run dev            # requires the Vercel CLI (npx vercel dev) or vercel login for full parity
+npx vercel dev --listen 3000   # first run prompts a one-time device login to Vercel
 ```
+
+Run it with `npx vercel dev` directly, not `npm run dev` — there's deliberately no `dev` script in
+`Backend/package.json`, since Vercel's CLI treats a `"dev": "vercel dev"` script as a recursive
+self-invocation and refuses to start.
 
 `IP_HASH_SALT` can be anything long and random: `openssl rand -hex 32`.
 
