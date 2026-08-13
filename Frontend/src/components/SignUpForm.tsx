@@ -58,6 +58,7 @@ export function SignUpForm({ trip }: SignUpFormProps) {
       phone: values.phone,
       emergencyContactName: values.emergencyContactName,
       emergencyContactPhone: values.emergencyContactPhone,
+      guardianName: values.guardianName ?? "",
       guardianEmail: values.guardianEmail ?? "",
       guardianConfirmed: values.guardianConfirmed ?? false,
       dietaryRestrictions: values.dietaryRestrictions ?? "",
@@ -206,9 +207,7 @@ export function SignUpForm({ trip }: SignUpFormProps) {
 
           <div className={styles.row}>
             <div className={styles.field}>
-              <label htmlFor="emergencyContactName">
-                {isMinor ? "Parent/guardian name" : "Emergency contact name"}
-              </label>
+              <label htmlFor="emergencyContactName">Emergency contact name</label>
               <input
                 id="emergencyContactName"
                 type="text"
@@ -226,9 +225,7 @@ export function SignUpForm({ trip }: SignUpFormProps) {
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="emergencyContactPhone">
-                {isMinor ? "Parent/guardian phone" : "Emergency contact phone"}
-              </label>
+              <label htmlFor="emergencyContactPhone">Emergency contact phone</label>
               <input
                 id="emergencyContactPhone"
                 type="tel"
@@ -249,24 +246,43 @@ export function SignUpForm({ trip }: SignUpFormProps) {
           {isMinor && (
             <div className={styles.guardianSection}>
               <p className={styles.hint}>
-                Builders under 18 need a parent or legal guardian's consent to join — that's the
-                contact above. We just need their email too, and a quick confirmation.
+                Builders under 18 need a parent or legal guardian's consent to join. Enter their
+                name and email below — this can be the same as your emergency contact above, or
+                someone else.
               </p>
 
-              <div className={styles.field}>
-                <label htmlFor="guardianEmail">Parent/guardian email</label>
-                <input
-                  id="guardianEmail"
-                  type="email"
-                  aria-invalid={!!errors.guardianEmail}
-                  aria-describedby={errors.guardianEmail ? "guardianEmail-error" : undefined}
-                  {...register("guardianEmail")}
-                />
-                {errors.guardianEmail && (
-                  <p id="guardianEmail-error" className={styles.error} role="alert">
-                    {errors.guardianEmail.message}
-                  </p>
-                )}
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label htmlFor="guardianName">Parent/guardian name</label>
+                  <input
+                    id="guardianName"
+                    type="text"
+                    aria-invalid={!!errors.guardianName}
+                    aria-describedby={errors.guardianName ? "guardianName-error" : undefined}
+                    {...register("guardianName")}
+                  />
+                  {errors.guardianName && (
+                    <p id="guardianName-error" className={styles.error} role="alert">
+                      {errors.guardianName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="guardianEmail">Parent/guardian email</label>
+                  <input
+                    id="guardianEmail"
+                    type="email"
+                    aria-invalid={!!errors.guardianEmail}
+                    aria-describedby={errors.guardianEmail ? "guardianEmail-error" : undefined}
+                    {...register("guardianEmail")}
+                  />
+                  {errors.guardianEmail && (
+                    <p id="guardianEmail-error" className={styles.error} role="alert">
+                      {errors.guardianEmail.message}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className={styles.checkboxField}>
@@ -280,7 +296,8 @@ export function SignUpForm({ trip }: SignUpFormProps) {
                     }
                     {...register("guardianConfirmed")}
                   />
-                  I confirm the contact above is my parent or legal guardian.
+                  I confirm this person is my parent or legal guardian and consents to my
+                  participation in this trip.
                 </label>
                 {errors.guardianConfirmed && (
                   <p id="guardianConfirmed-error" className={styles.error} role="alert">

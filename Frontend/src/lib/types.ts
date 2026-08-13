@@ -16,10 +16,12 @@ export type SignupPayload = {
   emergencyContactPhone: string;
   /**
    * Required only when the applicant is a minor on the selected departure
-   * date. There's no separate guardianName field — for a minor, the
-   * emergencyContactName/Phone fields above are the parent/guardian's
-   * (relabeled in the UI), confirmed via guardianConfirmed.
+   * date (16-17; 18-19 need none of this). Explicitly separate from
+   * emergencyContactName/Phone above — this is the parent/guardian's own
+   * name and email, not a relabeled reuse of another field, so "guardian
+   * name + email" is collected as its own explicit thing.
    */
+  guardianName: string;
   guardianEmail: string;
   guardianConfirmed: boolean;
   dietaryRestrictions: string;

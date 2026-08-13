@@ -22,11 +22,6 @@ const signupFormObjectSchema = z.object({
   dateOfBirth: z.string().regex(ISO_DATE_PATTERN, "Enter your date of birth."),
   email: z.string().trim().email("Enter a valid email address."),
   phone: z.string().trim().regex(PHONE_PATTERN, "Enter a valid phone number."),
-  // For a minor, these fields are relabeled "Parent/guardian name/phone" in
-  // the UI and serve double duty — see SignUpForm.tsx and the README's
-  // Round 2 notes for why (avoids collecting two unrelated adults' worth
-  // of contact info, and makes explicit that a minor's emergency contact
-  // must be their parent/guardian, not just labeled as if it might be).
   emergencyContactName: z
     .string()
     .trim()
@@ -35,6 +30,12 @@ const signupFormObjectSchema = z.object({
     .string()
     .trim()
     .regex(PHONE_PATTERN, "Enter a valid phone number."),
+  // Only required for minors (16-17; 18-19 need none of this) — enforced
+  // below in superRefine, since that's the only place age-on-departure is
+  // known. Explicitly separate from emergencyContactName above, not a
+  // relabeled reuse of it — "guardian name + email" collected as its own
+  // distinct thing, per spec.
+  guardianName: z.string().trim().max(100).optional().or(z.literal("")),
   guardianEmail: z.string().trim().max(254).optional().or(z.literal("")),
   guardianConfirmed: z.boolean().optional(),
   dietaryRestrictions: z.string().trim().max(300, "Keep this under 300 characters.").optional(),
@@ -130,13 +131,22 @@ export function createSignupFormSchema(cohorts: Cohort[]) {
     }
 
     if (result.isMinor) {
+      const guardianName = data.guardianName?.trim() ?? "";
       const guardianEmail = data.guardianEmail?.trim() ?? "";
+
+      if (!guardianName || !NAME_PATTERN.test(guardianName)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardianName"],
+          message: "Enter your parent or guardian's name — required for Builders under 18.",
+        });
+      }
 
       if (!guardianEmail || !z.string().email().safeParse(guardianEmail).success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["guardianEmail"],
-          message: "A valid parent/guardian email is required for Builders under 18.",
+          message: "Enter a valid parent/guardian email — required for Builders under 18.",
         });
       }
 
@@ -144,7 +154,7 @@ export function createSignupFormSchema(cohorts: Cohort[]) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["guardianConfirmed"],
-          message: "Please confirm the contact above is your parent or legal guardian.",
+          message: "Please confirm this person is your parent or legal guardian.",
         });
       }
     }

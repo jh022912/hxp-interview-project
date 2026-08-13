@@ -18,19 +18,17 @@ const baseSchema = z.object({
   dateOfBirth: z.string().regex(ISO_DATE_PATTERN, "Enter a valid date of birth."),
   email: z.string().email("Enter a valid email address.").max(254),
   phone: z.string().regex(PHONE_PATTERN, "Enter a valid phone number."),
-  // For a minor, this IS the parent/guardian's name/phone — relabeled in
-  // the frontend UI, not a separate field. Avoids collecting two unrelated
-  // adults' worth of contact info and makes explicit (via UI copy +
-  // guardianConfirmed below) that a minor's emergency contact must be
-  // their parent/guardian, not just implied.
   emergencyContactName: z
     .string()
     .regex(NAME_PATTERN, "Enter a valid emergency contact name."),
   emergencyContactPhone: z
     .string()
     .regex(PHONE_PATTERN, "Enter a valid emergency contact phone number."),
-  // Only required for minors (enforced below in superRefine, since that's
-  // the only place we know the applicant's age-on-departure).
+  // Only required for minors — 16-17 need this; 18-19 need none of it
+  // (enforced below in superRefine, since that's the only place we know
+  // age-on-departure). Explicitly separate from emergencyContactName above,
+  // not a relabeled reuse of it — collected as its own distinct thing.
+  guardianName: z.string().max(100).optional().or(z.literal("")),
   guardianEmail: z.string().max(254).optional().or(z.literal("")),
   guardianConfirmed: z.boolean().optional(),
   dietaryRestrictions: z
@@ -110,7 +108,16 @@ export const signupSchema = baseSchema.superRefine((data, ctx) => {
   }
 
   if (ageAtDeparture < ADULT_AGE) {
+    const guardianName = data.guardianName?.trim() ?? "";
     const guardianEmail = data.guardianEmail?.trim() ?? "";
+
+    if (!guardianName || !NAME_PATTERN.test(guardianName)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["guardianName"],
+        message: "A parent/guardian name is required for Builders under 18.",
+      });
+    }
 
     if (!guardianEmail || !z.string().email().safeParse(guardianEmail).success) {
       ctx.addIssue({
@@ -124,7 +131,7 @@ export const signupSchema = baseSchema.superRefine((data, ctx) => {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["guardianConfirmed"],
-        message: "Please confirm the emergency contact is the applicant's parent or legal guardian.",
+        message: "Please confirm this person is the applicant's parent or legal guardian.",
       });
     }
   }
@@ -173,9 +180,7 @@ export function sanitizeSignup(input: SignupInput): SanitizedSignup {
     phone: input.phone.trim(),
     emergencyContactName: input.emergencyContactName.trim(),
     emergencyContactPhone: input.emergencyContactPhone.trim(),
-    // Derived from emergencyContactName/guardianConfirmed rather than a
-    // separate form field — see the comment on baseSchema above.
-    guardianName: isMinor ? input.emergencyContactName.trim() : null,
+    guardianName: isMinor ? input.guardianName!.trim() : null,
     guardianEmail: isMinor
       ? validator.normalizeEmail(input.guardianEmail!.trim()) || input.guardianEmail!.trim().toLowerCase()
       : null,

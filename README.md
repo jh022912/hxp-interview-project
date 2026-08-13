@@ -208,20 +208,21 @@ prerequisite for the eligibility check to mean anything.
 - `Backend/lib/cohorts.ts` — server's own authoritative `tripId`+`cohortId` → departure-date
   lookup. The client sends a `cohortId`, never a date; the server looks the date up itself, so a
   forged request can't just claim a more favorable departure date.
-- `Backend/lib/validate.ts` — `dateOfBirth`, `cohortId`, `guardianEmail`, `guardianConfirmed`
-  added to the schema; a `superRefine` recomputes age-on-departure independently and requires
-  guardian info only when the computed age is under 18 — never trusting whether the client
-  thought it needed them.
-- **Emergency contact doubles as parent/guardian for minors, explicitly.** Originally this shipped
-  with a separate, unrelated "Guardian name" field alongside "Emergency contact name" — two
-  disconnected adults with no verification that either was actually a parent/guardian. Relabeled:
-  for a minor, the existing Emergency Contact fields become "Parent/guardian name" and
-  "Parent/guardian phone" (same fields, no double data entry), a guardian email field is added,
-  and a required checkbox — *"I confirm the contact above is my parent or legal guardian"* — makes
-  the claim explicit and auditable rather than implied. Adults still see the generic "Emergency
-  contact" labels.
-- `SignUpForm.tsx` — departure-date select, date-of-birth input, and a guardian section (email +
-  confirmation checkbox) that appears only once the computed age is a minor. Ineligibility
+- `Backend/lib/validate.ts` — `dateOfBirth`, `cohortId`, `guardianName`, `guardianEmail`,
+  `guardianConfirmed` added to the schema; a `superRefine` recomputes age-on-departure
+  independently and requires guardian info only when the computed age is under 18 (16-17; 18-19
+  need none of it) — never trusting whether the client thought it needed them.
+- **Guardian name + email are their own explicit fields, not folded into another one.** An earlier
+  pass relabeled the existing Emergency Contact fields to double as "parent/guardian" for minors
+  to avoid double data entry — but that meant "guardian name" wasn't actually collected as its own
+  distinct thing, just implied via a relabeled field. Reverted: Emergency Contact stays generic for
+  everyone (as originally specced), and a minor additionally sees a dedicated **Parent/guardian
+  name** + **Parent/guardian email** section (can be the same person as the emergency contact, or
+  someone else) plus a required checkbox — *"I confirm this person is my parent or legal guardian
+  and consents to my participation in this trip"* — making the claim explicit and auditable rather
+  than assumed from a label.
+- `SignUpForm.tsx` — departure-date select, date-of-birth input, and a guardian section (name +
+  email + confirmation checkbox) that appears only once the computed age is a minor. Ineligibility
   surfaces as a same-pattern inline field message under date of birth (consistent with every other
   field's error state, not a new dead-end screen), with direction-aware copy: too young points
   toward domestic trips and next year; too old (aged out) points toward returning as a Trip Leader.
@@ -229,8 +230,7 @@ prerequisite for the eligibility check to mean anything.
   right there.
 - One SQL migration: `cohort_id`, `date_of_birth`, `guardian_name`, `guardian_email` added to
   `trip_signups` (nullable — pre-existing rows predate these fields; requiredness is enforced in
-  application code, not a DB constraint). `guardian_name` is stored as a copy of the emergency
-  contact name for minors, not from a separate input.
+  application code, not a DB constraint).
 
 **Ineligible-applicant UX, and why:** an inline message under the date-of-birth field, in the same
 visual language as every other validation error, rather than a separate "sorry" page — the option
@@ -252,18 +252,19 @@ would qualify for.
 | 3 | Exactly 20 on departure — birthday *is* the departure date (the classic off-by-one) | 400 | ✅ 400 |
 | 4 | One day short of 16 on departure | 400 | ✅ 400 |
 | 5 | Same DOB: ineligible for cohort 2027-1 (age 15), eligible for cohort 2027-3 (age 16) | 400 then 201 | ✅ both |
-| 6 | Exactly 17, guardian email + confirmation omitted | 400 (both required) | ✅ 400 |
-| 7 | Exactly 17, guardian email present but `guardianConfirmed: false` | 400 (explicit confirmation, not just data presence) | ✅ 400 |
-| 8 | Exactly 18, no guardian info | 201 (not required) | ✅ 201 |
+| 6 | Exactly 17, guardian name/email/confirmation all omitted | 400 (all three required) | ✅ 400 |
+| 6b | Exactly 17, guardian name specifically omitted (email + confirmation present) | 400 | ✅ 400 |
+| 7 | Exactly 17, guardian name + email present but `guardianConfirmed: false` | 400 (explicit confirmation, not just data presence) | ✅ 400 |
+| 8 | Exactly 18 **and** exactly 19, no guardian info at all | 201 for both (not required at either age) | ✅ 201 ×2 |
 | 9 | **Currently 15 today, but 16 on the selected departure date** | 201 (eligibility is about departure, not today) | ✅ 201 |
 | 10 | **Currently 19 today, but 20 on the selected departure date** | 400 (ages out before departure, even though "today" they'd qualify) | ✅ 400, Trip-Leader copy |
 | 11 | Malformed DOB string / Feb 30 / future date | 400 (×3) | ✅ 400 ×3 |
 | 12 | Injection-style payload in `dateOfBirth` (`'; DROP TABLE ...`) | 400 (fails format regex, never reaches a query) | ✅ 400 |
 | 13 | Injection-style payload in `cohortId` | 400 (fails allowlist, no matching cohort) | ✅ 400 |
 | 14 | Bypass attempt: forged extra `"departureDate"` field on an otherwise-ineligible request | 400 (forged field silently ignored — server never reads a client-supplied date) | ✅ 400 |
-| 15 | XSS payload in the parent/guardian name field (relabeled emergency contact) for a minor | 400 (allowlist rejects outright, not escaped-and-stored) | ✅ 400 |
+| 15 | XSS payload in the dedicated parent/guardian name field for a minor | 400 (allowlist rejects outright, not escaped-and-stored) | ✅ 400 |
 | 16 | Nonexistent / empty-string `cohortId` | 400 (×2) | ✅ 400 ×2 |
-| 17 | Adult (19) submits guardian email + confirmation anyway | 201, but fields are **discarded, not stored** | ✅ 201, verified null in DB |
+| 17 | Adult (18 or 19) submits guardian name/email/confirmation anyway | 201, but fields are **discarded, not stored** | ✅ 201, verified null in DB |
 | 18 | Leap-day (Feb 29) birthdate against a non-leap-year date, pure function | Turns N on Mar 1, not Feb 28 | ✅ confirmed |
 
 Post-test, queried Supabase directly: rows exist for exactly the cases that should have succeeded,
