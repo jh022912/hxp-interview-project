@@ -122,18 +122,38 @@ handled a small follow-up well: repositioning the hero photo's crop (`background
 a one-line "I can't see the people, just water" note — the kind of fast, low-stakes visual
 iteration this split was designed for.
 
-**Rejected/redirected AI output:** partway through the build, the user wanted to add a real photo
-of themselves with their trip crew to the hero background. Claude's first move was to recommend
-*against* using the actual photo as-is — it has ~20 other identifiable people in it, some
-appearing to be minors, with no consent to publish their faces on a public site. Claude's
-recommended option was cropping to just the user. The user considered it and explicitly overrode
-that recommendation: it's their own trip, their own photo, their own people, and they made an
-informed call to use it in full rather than crop it. Claude proceeded with the user's decision,
-not its own — the right call, since the privacy judgment about a group of real people belongs to
-someone who actually knows them, not to the model flagging a generic risk pattern. That's the
-shape most of this build actually took: Claude proposing a default, the user redirecting where
-their own context mattered more, and the build adjusting to match — not a one-shot correct/incorrect
-output, but an ongoing back-and-forth.
+**Rejected/redirected AI output — two examples:**
+
+1. **The delegation strategy itself.** Deciding how to satisfy the two-model requirement was
+   itself a decision Claude got redirected on. Claude's default proposal was the low-effort path:
+   Claude Sonnet 5 for everything architectural, Claude Haiku 4.5 for one bounded,
+   fully-automated content task — no second tool, no context-switching, nothing for the user to
+   personally review. The user overrode that: instead of the safe default, they chose to open
+   Cursor (running Grok 4.6) themselves and hand it two specific files
+   (`SignUpForm.tsx`/`Confirmation.tsx`), then bring the actual diff back for review rather than
+   let it happen automatically. That single call is why this project has a real two-tool split
+   with a human directing both sides of it, instead of two tiers of the same model running
+   end-to-end without a person in the loop — the user decided which part of the codebase was
+   worth their own hands-on attention, reviewed what came back, and caught a real UX issue in it
+   (the hero photo needed repositioning) that only showed up once they looked at the rendered
+   result themselves.
+
+2. **The hero photo.** Partway through the build, the user wanted to add a real photo of
+   themselves with their trip crew to the hero background. Claude's first move was to recommend
+   *against* using the actual photo as-is — it has ~20 other identifiable people in it, some
+   appearing to be minors, with no consent to publish their faces on a public site. Claude's
+   recommended option was cropping to just the user. The user considered it and explicitly
+   overrode that recommendation: it's their own trip, their own photo, their own people, and they
+   made an informed call to use it in full rather than crop it. Claude proceeded with the user's
+   decision, not its own — the right call, since the privacy judgment about a group of real
+   people belongs to someone who actually knows them, not to the model flagging a generic risk
+   pattern.
+
+Both of those are the same underlying shape: Claude proposing a lower-effort or more conservative
+default, and the user redirecting toward the option that required more of their own judgment and
+hands-on involvement — not a one-shot correct/incorrect output, but an ongoing back-and-forth
+where the highest-leverage calls (what gets built by whom, what a real photo of real people
+should show) stayed with the person who actually had the context to make them.
 
 ## Security
 
