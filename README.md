@@ -1,5 +1,7 @@
 # HXP Brazil: Amazon River — Trip Sign-Up Microsite
 
+**Live site: [hxp-brazil-signup-frontend.vercel.app](https://hxp-brazil-signup-frontend.vercel.app)**
+
 A landing page + sign-up form for a fictional HXP trip to the Amazon (Pará, Brazil), built for the
 HXP take-home technical assignment (Scenario #2). Inspired by the real hxp.org site (screenshots
 provided with the assignment) and by a real HXP trip to Brazil I served on — not affiliated with
@@ -120,13 +122,18 @@ handled a small follow-up well: repositioning the hero photo's crop (`background
 a one-line "I can't see the people, just water" note — the kind of fast, low-stakes visual
 iteration this split was designed for.
 
-**Rejected/corrected AI output:** the first version of the generated topographic background
-pattern (`Frontend/src/assets/topo-pattern.svg`) used a dark charcoal stroke, written on the
-assumption it would sit on the light cream background sections. It was actually placed behind the
-dark hero section — rendering it in the browser (not just reading the code) showed the pattern
-was effectively invisible, dark-on-dark. Regenerated the same script with a light cream stroke and
-higher opacity, which is what's shipped. Caught by actually looking at a screenshot rather than
-trusting that "the code looks right."
+**Rejected/redirected AI output:** partway through the build, the user wanted to add a real photo
+of themselves with their trip crew to the hero background. Claude's first move was to recommend
+*against* using the actual photo as-is — it has ~20 other identifiable people in it, some
+appearing to be minors, with no consent to publish their faces on a public site. Claude's
+recommended option was cropping to just the user. The user considered it and explicitly overrode
+that recommendation: it's their own trip, their own photo, their own people, and they made an
+informed call to use it in full rather than crop it. Claude proceeded with the user's decision,
+not its own — the right call, since the privacy judgment about a group of real people belongs to
+someone who actually knows them, not to the model flagging a generic risk pattern. That's the
+shape most of this build actually took: Claude proposing a default, the user redirecting where
+their own context mattered more, and the build adjusting to match — not a one-shot correct/incorrect
+output, but an ongoing back-and-forth.
 
 ## Security
 
@@ -163,4 +170,9 @@ Threats considered, and what's mitigated today:
 
 ## Round 2 availability
 
-`[FILL IN: 2-3 time slots in the next few days for the 1-hour change-request window]`
+All times Mountain Time — let me know if a different time works better and I'll make it work:
+
+- Thursday, Aug 13, 4:30–6:30 PM
+- Friday, Aug 14, 4:30–6:30 PM
+- Monday, Aug 17, 4:30–6:30 PM
+- Saturday, Aug 15, any time all day
