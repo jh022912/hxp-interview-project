@@ -129,12 +129,9 @@ export const trips: Trip[] = [
       { id: "2027-3", dateRange: "Jul 3 – Jul 18, 2027", status: "open", slotsLeft: 9 },
     ],
     builderNote: {
-      // TODO(Jacob): swap this for a real, specific memory from your own trip
-      // to Brazil — one concrete moment lands better than a summary. This is
-      // the one deliberately-marked "personal touch" slot from the build plan.
       quote:
         "Ask me about the build, and I'll tell you about the river instead — that's usually how it goes.",
-      attribution: "— a returned Builder",
+      attribution: "— Garren, 17 years old",
     },
   },
 ];
