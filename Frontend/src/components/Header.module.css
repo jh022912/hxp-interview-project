@@ -1,0 +1,43 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--color-cream);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-3);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.dot {
+  color: var(--color-terracotta);
+}
+
+.cta {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 2px solid var(--color-charcoal);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.cta:hover {
+  background: var(--color-charcoal);
+  color: var(--color-white);
+}

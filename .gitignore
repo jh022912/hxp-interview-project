@@ -1,0 +1,13 @@
+.DS_Store
+node_modules
+.env
+.env.local
+.vercel
+*.tsbuildinfo
+dist
+
+# Reference material for this assignment — not part of the deliverable, and
+# the screenshots contain real photos of real HXP trip participants (some
+# appear to be minors) that we have no consent to republish.
+/HXP Current Website screenshots for inspiration/
+/Scenario Instructions.docx.pdf
