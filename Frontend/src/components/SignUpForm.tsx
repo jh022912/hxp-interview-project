@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signupFormSchema, type SignupFormValues } from "../lib/validation";
+import { checkEligibility, createSignupFormSchema, type SignupFormValues } from "../lib/validation";
 import { submitSignup } from "../lib/api";
 import type { SignupPayload } from "../lib/types";
+import type { Trip } from "../data/trips";
 import { Confirmation } from "./Confirmation";
 import styles from "./SignUpForm.module.css";
 
@@ -15,35 +16,50 @@ import styles from "./SignUpForm.module.css";
  * intended follow-up, not the wiring itself.
  */
 type SignUpFormProps = {
-  tripId: string;
-  tripName: string;
+  trip: Trip;
 };
 
-export function SignUpForm({ tripId, tripName }: SignUpFormProps) {
+export function SignUpForm({ trip }: SignUpFormProps) {
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState("");
 
+  const schema = useMemo(() => createSignupFormSchema(trip.cohorts), [trip.cohorts]);
+
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignupFormValues>({
-    resolver: zodResolver(signupFormSchema),
+    resolver: zodResolver(schema),
   });
 
+  const [watchedDob, watchedCohortId] = watch(["dateOfBirth", "cohortId"]);
+  const eligibility = useMemo(
+    () => checkEligibility(watchedDob ?? "", trip.cohorts, watchedCohortId ?? ""),
+    [watchedDob, watchedCohortId, trip.cohorts],
+  );
+  const isMinor = eligibility.status === "eligible" && eligibility.isMinor;
+
   if (submitted) {
-    return <Confirmation tripName={tripName} />;
+    return <Confirmation tripName={trip.name} />;
   }
 
   const onSubmit = async (values: SignupFormValues) => {
+    setServerError(null);
+
     const payload: SignupPayload = {
-      tripId,
+      tripId: trip.slug,
+      cohortId: values.cohortId,
       fullName: values.fullName,
+      dateOfBirth: values.dateOfBirth,
       email: values.email,
       phone: values.phone,
       emergencyContactName: values.emergencyContactName,
       emergencyContactPhone: values.emergencyContactPhone,
+      guardianName: values.guardianName ?? "",
+      guardianEmail: values.guardianEmail ?? "",
       dietaryRestrictions: values.dietaryRestrictions ?? "",
       reason: values.reason,
       website: honeypot,
@@ -104,6 +120,52 @@ export function SignUpForm({ tripId, tripName }: SignUpFormProps) {
                 {errors.fullName.message}
               </p>
             )}
+          </div>
+
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label htmlFor="dateOfBirth">Date of birth</label>
+              <input
+                id="dateOfBirth"
+                type="date"
+                autoComplete="bday"
+                aria-invalid={!!errors.dateOfBirth}
+                aria-describedby={errors.dateOfBirth ? "dateOfBirth-error" : undefined}
+                {...register("dateOfBirth")}
+              />
+              {errors.dateOfBirth && (
+                <p id="dateOfBirth-error" className={styles.error} role="alert">
+                  {errors.dateOfBirth.message}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="cohortId">Departure date</label>
+              <select
+                id="cohortId"
+                defaultValue=""
+                aria-invalid={!!errors.cohortId}
+                aria-describedby={errors.cohortId ? "cohortId-error" : undefined}
+                {...register("cohortId")}
+              >
+                <option value="" disabled>
+                  Choose a departure date
+                </option>
+                {trip.cohorts.map((cohort) => (
+                  <option key={cohort.id} value={cohort.id} disabled={cohort.status === "soldOut"}>
+                    {cohort.dateRange}
+                    {cohort.status === "waitlist" ? " (Waitlist)" : ""}
+                    {cohort.status === "soldOut" ? " (Sold out)" : ""}
+                  </option>
+                ))}
+              </select>
+              {errors.cohortId && (
+                <p id="cohortId-error" className={styles.error} role="alert">
+                  {errors.cohortId.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className={styles.row}>
@@ -179,6 +241,49 @@ export function SignUpForm({ tripId, tripName }: SignUpFormProps) {
               )}
             </div>
           </div>
+
+          {isMinor && (
+            <div className={styles.guardianSection}>
+              <p className={styles.hint}>
+                Builders under 18 need a parent or guardian's consent to join. Enter their name and
+                email below.
+              </p>
+
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label htmlFor="guardianName">Guardian name</label>
+                  <input
+                    id="guardianName"
+                    type="text"
+                    aria-invalid={!!errors.guardianName}
+                    aria-describedby={errors.guardianName ? "guardianName-error" : undefined}
+                    {...register("guardianName")}
+                  />
+                  {errors.guardianName && (
+                    <p id="guardianName-error" className={styles.error} role="alert">
+                      {errors.guardianName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="guardianEmail">Guardian email</label>
+                  <input
+                    id="guardianEmail"
+                    type="email"
+                    aria-invalid={!!errors.guardianEmail}
+                    aria-describedby={errors.guardianEmail ? "guardianEmail-error" : undefined}
+                    {...register("guardianEmail")}
+                  />
+                  {errors.guardianEmail && (
+                    <p id="guardianEmail-error" className={styles.error} role="alert">
+                      {errors.guardianEmail.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className={styles.field}>
             <label htmlFor="dietaryRestrictions">Dietary restrictions (optional)</label>

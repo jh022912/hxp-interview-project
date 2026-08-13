@@ -6,11 +6,17 @@
  */
 export type SignupPayload = {
   tripId: string;
+  cohortId: string;
   fullName: string;
+  /** ISO YYYY-MM-DD */
+  dateOfBirth: string;
   email: string;
   phone: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
+  /** Required only when the applicant is a minor on the selected departure date. */
+  guardianName: string;
+  guardianEmail: string;
   dietaryRestrictions: string;
   reason: string;
   /** Honeypot — must stay empty and hidden from real users. */

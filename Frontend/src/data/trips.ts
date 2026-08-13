@@ -15,6 +15,8 @@ export type CohortStatus = "open" | "waitlist" | "soldOut";
 export type Cohort = {
   id: string;
   dateRange: string;
+  /** ISO YYYY-MM-DD departure date — the authoritative value eligibility is computed against. */
+  departureDate: string;
   status: CohortStatus;
   slotsLeft: number;
 };
@@ -124,9 +126,27 @@ export const trips: Trip[] = [
       },
     ],
     cohorts: [
-      { id: "2027-1", dateRange: "Jun 5 – Jun 20, 2027", status: "open", slotsLeft: 6 },
-      { id: "2027-2", dateRange: "Jun 19 – Jul 4, 2027", status: "open", slotsLeft: 3 },
-      { id: "2027-3", dateRange: "Jul 3 – Jul 18, 2027", status: "open", slotsLeft: 9 },
+      {
+        id: "2027-1",
+        dateRange: "Jun 5 – Jun 20, 2027",
+        departureDate: "2027-06-05",
+        status: "open",
+        slotsLeft: 6,
+      },
+      {
+        id: "2027-2",
+        dateRange: "Jun 19 – Jul 4, 2027",
+        departureDate: "2027-06-19",
+        status: "open",
+        slotsLeft: 3,
+      },
+      {
+        id: "2027-3",
+        dateRange: "Jul 3 – Jul 18, 2027",
+        departureDate: "2027-07-03",
+        status: "open",
+        slotsLeft: 9,
+      },
     ],
     builderNote: {
       quote:

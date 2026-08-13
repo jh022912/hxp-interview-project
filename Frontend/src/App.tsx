@@ -18,7 +18,7 @@ function App() {
         <TripDetails trip={trip} />
         <Itinerary trip={trip} />
         <BuilderNote trip={trip} />
-        <SignUpForm tripId={trip.slug} tripName={trip.name} />
+        <SignUpForm trip={trip} />
       </main>
       <Footer />
     </>

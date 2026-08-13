@@ -186,6 +186,86 @@ Threats considered, and what's mitigated today:
   attacker.
 - `builderNote` in `trips.ts` still has placeholder copy — see the `TODO(Jacob)` comment.
 
+## Round 2: eligibility enforcement (change request)
+
+**The request:** Builders must be 16–19 on the trip's *departure date*. Collect date of birth,
+require parent/guardian consent (name + email) for minors, enforce it server-side, and decide
+what an ineligible applicant sees.
+
+**The gap this surfaced:** the original form never asked *which* departure date someone was
+signing up for — with 3 real cohort dates already in the data model, "16–19 on departure" is
+meaningless without knowing which one. Added a departure-date selector to the form as a
+prerequisite for the eligibility check to mean anything.
+
+**What changed:**
+- `Frontend/src/data/trips.ts` — each cohort now carries a machine-readable `departureDate`
+  (ISO `YYYY-MM-DD`) alongside its existing display string.
+- `Backend/lib/eligibility.ts` (+ mirrored `Frontend/src/lib/eligibility.ts`) — pure integer
+  year/month/day math for age-on-a-given-date. Deliberately never diffs `Date` objects for the
+  actual comparison, so a browser in Mountain Time and a server in UTC can't disagree near a
+  boundary. `Date` objects are only used to validate that a calendar date is real (rejects Feb 30),
+  constructed from explicit components so that step carries no timezone risk either.
+- `Backend/lib/cohorts.ts` — server's own authoritative `tripId`+`cohortId` → departure-date
+  lookup. The client sends a `cohortId`, never a date; the server looks the date up itself, so a
+  forged request can't just claim a more favorable departure date.
+- `Backend/lib/validate.ts` — `dateOfBirth`, `cohortId`, `guardianName`, `guardianEmail` added to
+  the schema; a `superRefine` recomputes age-on-departure independently and requires guardian
+  fields only when the computed age is under 18 — never trusting whether the client thought it
+  needed them.
+- `SignUpForm.tsx` — departure-date select, date-of-birth input, and a guardian section that
+  appears only once the computed age is a minor. Ineligibility surfaces as a same-pattern inline
+  field message under date of birth (consistent with every other field's error state, not a new
+  dead-end screen) — and if the same birthdate would qualify for a *different* existing cohort,
+  it names it right there.
+- One SQL migration: `cohort_id`, `date_of_birth`, `guardian_name`, `guardian_email` added to
+  `trip_signups` (nullable — pre-existing rows predate these fields; requiredness is enforced in
+  application code, not a DB constraint).
+
+**Ineligible-applicant UX, and why:** an inline message under the date-of-birth field, in the same
+visual language as every other validation error, rather than a separate "sorry" page. It's the
+option that's actually shippable today with no new design work, doesn't dead-end someone who
+mistyped a digit, and — since it also names any other cohort they'd qualify for — turns a rejection
+into a redirect where possible.
+
+**Edge cases handled, with reproducible proof** (all run against the real Supabase-backed local
+Backend, via `POST /api/signup`; not claims):
+
+| # | Case | Expected | Result |
+|---|---|---|---|
+| 1 | Exactly 16 on departure (boundary) | 201, minor | ✅ 201 |
+| 2 | Exactly 19 on departure (boundary) | 201, adult | ✅ 201 |
+| 3 | Exactly 20 on departure — birthday *is* the departure date (the classic off-by-one) | 400 | ✅ 400 |
+| 4 | One day short of 16 on departure | 400 | ✅ 400 |
+| 5 | Same DOB: ineligible for cohort 2027-1 (age 15), eligible for cohort 2027-3 (age 16) | 400 then 201 | ✅ both |
+| 6 | Exactly 17, guardian fields omitted | 400 (guardian required) | ✅ 400 |
+| 7 | Exactly 18, no guardian fields | 201 (not required) | ✅ 201 |
+| 8 | Malformed DOB string / Feb 30 / future date | 400 (×3) | ✅ 400 ×3 |
+| 9 | Bypass attempt: forged extra `"departureDate"` field on an otherwise-ineligible request | 400 (forged field silently ignored — server never reads a client-supplied date) | ✅ 400 |
+| 10 | XSS payload in `guardianName` for a minor | 400 (allowlist rejects outright, not escaped-and-stored) | ✅ 400 |
+| 11 | Nonexistent `cohortId` | 400 | ✅ 400 |
+| 12 | Leap-day (Feb 29) birthdate against a non-leap-year date, pure function | Turns N on Mar 1, not Feb 28 | ✅ confirmed |
+
+Post-test, queried Supabase directly: **exactly 4 rows exist** for the test batch — the 4 that
+should have succeeded (#1, #2, #7, #5's second half) — confirming rejections never touched
+storage, not just that they returned an error while quietly inserting anyway.
+
+**What I cut, given the 1-hour window:**
+- The cohort → departure-date map is duplicated between `Frontend/src/data/trips.ts` and
+  `Backend/lib/cohorts.ts` rather than shared from one source. The two projects don't share a
+  package today, and building one wasn't worth the time against the actual deadline — a real
+  follow-up if trip data changes often.
+- No automated test file committed (no `vitest`/`jest` added under time pressure) — proof is the
+  reproducible `curl` requests above plus the pure-function leap-year check, both re-runnable
+  against the live Backend.
+- No affirmative "I am the parent/guardian" checkbox beyond capturing name + email — the request
+  defined consent operationally as those two fields, so that's what was built.
+- Didn't re-run this past Cursor/a second model — see the note below.
+
+**AI model note for Round 2:** solo Claude Sonnet 5, no handoff to a second model this round. The
+age-eligibility logic has to match exactly between client and server (same boundary math, same
+guardian threshold), and a model handoff mid-task would have cost more minutes on context-transfer
+than it would have saved on any one file — not worth it against a hard 5:30 PM deadline.
+
 ## Round 2 availability
 
 All times Mountain Time — let me know if a different time works better and I'll make it work:

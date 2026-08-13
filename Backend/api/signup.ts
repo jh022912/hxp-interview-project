@@ -74,11 +74,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { error: insertError } = await supabase.from("trip_signups").insert({
     trip_id: sanitized.tripId,
+    cohort_id: sanitized.cohortId,
     full_name: sanitized.fullName,
+    date_of_birth: sanitized.dateOfBirth,
     email: sanitized.email,
     phone: sanitized.phone,
     emergency_contact_name: sanitized.emergencyContactName,
     emergency_contact_phone: sanitized.emergencyContactPhone,
+    guardian_name: sanitized.guardianName,
+    guardian_email: sanitized.guardianEmail,
     dietary_restrictions: sanitized.dietaryRestrictions,
     reason: sanitized.reason,
     ip_hash: ipHash,
