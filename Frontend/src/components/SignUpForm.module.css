@@ -71,6 +71,28 @@
   margin: 0;
 }
 
+.checkboxField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.checkboxField label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.checkboxField input[type="checkbox"] {
+  margin-top: 0.2em;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  accent-color: var(--color-terracotta);
+}
+
 .serverError {
   margin: 0;
 }

@@ -58,8 +58,8 @@ export function SignUpForm({ trip }: SignUpFormProps) {
       phone: values.phone,
       emergencyContactName: values.emergencyContactName,
       emergencyContactPhone: values.emergencyContactPhone,
-      guardianName: values.guardianName ?? "",
       guardianEmail: values.guardianEmail ?? "",
+      guardianConfirmed: values.guardianConfirmed ?? false,
       dietaryRestrictions: values.dietaryRestrictions ?? "",
       reason: values.reason,
       website: honeypot,
@@ -206,7 +206,9 @@ export function SignUpForm({ trip }: SignUpFormProps) {
 
           <div className={styles.row}>
             <div className={styles.field}>
-              <label htmlFor="emergencyContactName">Emergency contact name</label>
+              <label htmlFor="emergencyContactName">
+                {isMinor ? "Parent/guardian name" : "Emergency contact name"}
+              </label>
               <input
                 id="emergencyContactName"
                 type="text"
@@ -224,7 +226,9 @@ export function SignUpForm({ trip }: SignUpFormProps) {
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="emergencyContactPhone">Emergency contact phone</label>
+              <label htmlFor="emergencyContactPhone">
+                {isMinor ? "Parent/guardian phone" : "Emergency contact phone"}
+              </label>
               <input
                 id="emergencyContactPhone"
                 type="tel"
@@ -245,42 +249,44 @@ export function SignUpForm({ trip }: SignUpFormProps) {
           {isMinor && (
             <div className={styles.guardianSection}>
               <p className={styles.hint}>
-                Builders under 18 need a parent or guardian's consent to join. Enter their name and
-                email below.
+                Builders under 18 need a parent or legal guardian's consent to join — that's the
+                contact above. We just need their email too, and a quick confirmation.
               </p>
 
-              <div className={styles.row}>
-                <div className={styles.field}>
-                  <label htmlFor="guardianName">Guardian name</label>
-                  <input
-                    id="guardianName"
-                    type="text"
-                    aria-invalid={!!errors.guardianName}
-                    aria-describedby={errors.guardianName ? "guardianName-error" : undefined}
-                    {...register("guardianName")}
-                  />
-                  {errors.guardianName && (
-                    <p id="guardianName-error" className={styles.error} role="alert">
-                      {errors.guardianName.message}
-                    </p>
-                  )}
-                </div>
+              <div className={styles.field}>
+                <label htmlFor="guardianEmail">Parent/guardian email</label>
+                <input
+                  id="guardianEmail"
+                  type="email"
+                  aria-invalid={!!errors.guardianEmail}
+                  aria-describedby={errors.guardianEmail ? "guardianEmail-error" : undefined}
+                  {...register("guardianEmail")}
+                />
+                {errors.guardianEmail && (
+                  <p id="guardianEmail-error" className={styles.error} role="alert">
+                    {errors.guardianEmail.message}
+                  </p>
+                )}
+              </div>
 
-                <div className={styles.field}>
-                  <label htmlFor="guardianEmail">Guardian email</label>
+              <div className={styles.checkboxField}>
+                <label htmlFor="guardianConfirmed">
                   <input
-                    id="guardianEmail"
-                    type="email"
-                    aria-invalid={!!errors.guardianEmail}
-                    aria-describedby={errors.guardianEmail ? "guardianEmail-error" : undefined}
-                    {...register("guardianEmail")}
+                    id="guardianConfirmed"
+                    type="checkbox"
+                    aria-invalid={!!errors.guardianConfirmed}
+                    aria-describedby={
+                      errors.guardianConfirmed ? "guardianConfirmed-error" : undefined
+                    }
+                    {...register("guardianConfirmed")}
                   />
-                  {errors.guardianEmail && (
-                    <p id="guardianEmail-error" className={styles.error} role="alert">
-                      {errors.guardianEmail.message}
-                    </p>
-                  )}
-                </div>
+                  I confirm the contact above is my parent or legal guardian.
+                </label>
+                {errors.guardianConfirmed && (
+                  <p id="guardianConfirmed-error" className={styles.error} role="alert">
+                    {errors.guardianConfirmed.message}
+                  </p>
+                )}
               </div>
             </div>
           )}

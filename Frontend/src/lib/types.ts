@@ -14,9 +14,14 @@ export type SignupPayload = {
   phone: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
-  /** Required only when the applicant is a minor on the selected departure date. */
-  guardianName: string;
+  /**
+   * Required only when the applicant is a minor on the selected departure
+   * date. There's no separate guardianName field — for a minor, the
+   * emergencyContactName/Phone fields above are the parent/guardian's
+   * (relabeled in the UI), confirmed via guardianConfirmed.
+   */
   guardianEmail: string;
+  guardianConfirmed: boolean;
   dietaryRestrictions: string;
   reason: string;
   /** Honeypot — must stay empty and hidden from real users. */

@@ -208,27 +208,42 @@ prerequisite for the eligibility check to mean anything.
 - `Backend/lib/cohorts.ts` — server's own authoritative `tripId`+`cohortId` → departure-date
   lookup. The client sends a `cohortId`, never a date; the server looks the date up itself, so a
   forged request can't just claim a more favorable departure date.
-- `Backend/lib/validate.ts` — `dateOfBirth`, `cohortId`, `guardianName`, `guardianEmail` added to
-  the schema; a `superRefine` recomputes age-on-departure independently and requires guardian
-  fields only when the computed age is under 18 — never trusting whether the client thought it
-  needed them.
-- `SignUpForm.tsx` — departure-date select, date-of-birth input, and a guardian section that
-  appears only once the computed age is a minor. Ineligibility surfaces as a same-pattern inline
-  field message under date of birth (consistent with every other field's error state, not a new
-  dead-end screen) — and if the same birthdate would qualify for a *different* existing cohort,
-  it names it right there.
+- `Backend/lib/validate.ts` — `dateOfBirth`, `cohortId`, `guardianEmail`, `guardianConfirmed`
+  added to the schema; a `superRefine` recomputes age-on-departure independently and requires
+  guardian info only when the computed age is under 18 — never trusting whether the client
+  thought it needed them.
+- **Emergency contact doubles as parent/guardian for minors, explicitly.** Originally this shipped
+  with a separate, unrelated "Guardian name" field alongside "Emergency contact name" — two
+  disconnected adults with no verification that either was actually a parent/guardian. Relabeled:
+  for a minor, the existing Emergency Contact fields become "Parent/guardian name" and
+  "Parent/guardian phone" (same fields, no double data entry), a guardian email field is added,
+  and a required checkbox — *"I confirm the contact above is my parent or legal guardian"* — makes
+  the claim explicit and auditable rather than implied. Adults still see the generic "Emergency
+  contact" labels.
+- `SignUpForm.tsx` — departure-date select, date-of-birth input, and a guardian section (email +
+  confirmation checkbox) that appears only once the computed age is a minor. Ineligibility
+  surfaces as a same-pattern inline field message under date of birth (consistent with every other
+  field's error state, not a new dead-end screen), with direction-aware copy: too young points
+  toward domestic trips and next year; too old (aged out) points toward returning as a Trip Leader.
+  Either way, if the same birthdate would qualify for a *different* existing cohort, it's named
+  right there.
 - One SQL migration: `cohort_id`, `date_of_birth`, `guardian_name`, `guardian_email` added to
   `trip_signups` (nullable — pre-existing rows predate these fields; requiredness is enforced in
-  application code, not a DB constraint).
+  application code, not a DB constraint). `guardian_name` is stored as a copy of the emergency
+  contact name for minors, not from a separate input.
 
 **Ineligible-applicant UX, and why:** an inline message under the date-of-birth field, in the same
-visual language as every other validation error, rather than a separate "sorry" page. It's the
-option that's actually shippable today with no new design work, doesn't dead-end someone who
-mistyped a digit, and — since it also names any other cohort they'd qualify for — turns a rejection
-into a redirect where possible.
+visual language as every other validation error, rather than a separate "sorry" page — the option
+that's shippable today with no new design work and doesn't dead-end someone who mistyped a digit.
+Copy differs by direction: **too young** — *"For this trip, all Builders need to be between 16 and
+19 years old on departure. Please look into our domestic trips, or check back next year — we'd
+love to have you when you're a bit older!"* **Too old** (aged out) gets different copy, not the
+same "wait until you're older" line that would make no sense to a 25-year-old — pointing toward
+returning as a Trip Leader instead. Either message also names any other cohort the same birthdate
+would qualify for.
 
 **Edge cases handled, with reproducible proof** (all run against the real Supabase-backed local
-Backend, via `POST /api/signup`; not claims):
+*and* production Backend, via `POST /api/signup`; not claims):
 
 | # | Case | Expected | Result |
 |---|---|---|---|
@@ -237,17 +252,23 @@ Backend, via `POST /api/signup`; not claims):
 | 3 | Exactly 20 on departure — birthday *is* the departure date (the classic off-by-one) | 400 | ✅ 400 |
 | 4 | One day short of 16 on departure | 400 | ✅ 400 |
 | 5 | Same DOB: ineligible for cohort 2027-1 (age 15), eligible for cohort 2027-3 (age 16) | 400 then 201 | ✅ both |
-| 6 | Exactly 17, guardian fields omitted | 400 (guardian required) | ✅ 400 |
-| 7 | Exactly 18, no guardian fields | 201 (not required) | ✅ 201 |
-| 8 | Malformed DOB string / Feb 30 / future date | 400 (×3) | ✅ 400 ×3 |
-| 9 | Bypass attempt: forged extra `"departureDate"` field on an otherwise-ineligible request | 400 (forged field silently ignored — server never reads a client-supplied date) | ✅ 400 |
-| 10 | XSS payload in `guardianName` for a minor | 400 (allowlist rejects outright, not escaped-and-stored) | ✅ 400 |
-| 11 | Nonexistent `cohortId` | 400 | ✅ 400 |
-| 12 | Leap-day (Feb 29) birthdate against a non-leap-year date, pure function | Turns N on Mar 1, not Feb 28 | ✅ confirmed |
+| 6 | Exactly 17, guardian email + confirmation omitted | 400 (both required) | ✅ 400 |
+| 7 | Exactly 17, guardian email present but `guardianConfirmed: false` | 400 (explicit confirmation, not just data presence) | ✅ 400 |
+| 8 | Exactly 18, no guardian info | 201 (not required) | ✅ 201 |
+| 9 | **Currently 15 today, but 16 on the selected departure date** | 201 (eligibility is about departure, not today) | ✅ 201 |
+| 10 | **Currently 19 today, but 20 on the selected departure date** | 400 (ages out before departure, even though "today" they'd qualify) | ✅ 400, Trip-Leader copy |
+| 11 | Malformed DOB string / Feb 30 / future date | 400 (×3) | ✅ 400 ×3 |
+| 12 | Injection-style payload in `dateOfBirth` (`'; DROP TABLE ...`) | 400 (fails format regex, never reaches a query) | ✅ 400 |
+| 13 | Injection-style payload in `cohortId` | 400 (fails allowlist, no matching cohort) | ✅ 400 |
+| 14 | Bypass attempt: forged extra `"departureDate"` field on an otherwise-ineligible request | 400 (forged field silently ignored — server never reads a client-supplied date) | ✅ 400 |
+| 15 | XSS payload in the parent/guardian name field (relabeled emergency contact) for a minor | 400 (allowlist rejects outright, not escaped-and-stored) | ✅ 400 |
+| 16 | Nonexistent / empty-string `cohortId` | 400 (×2) | ✅ 400 ×2 |
+| 17 | Adult (19) submits guardian email + confirmation anyway | 201, but fields are **discarded, not stored** | ✅ 201, verified null in DB |
+| 18 | Leap-day (Feb 29) birthdate against a non-leap-year date, pure function | Turns N on Mar 1, not Feb 28 | ✅ confirmed |
 
-Post-test, queried Supabase directly: **exactly 4 rows exist** for the test batch — the 4 that
-should have succeeded (#1, #2, #7, #5's second half) — confirming rejections never touched
-storage, not just that they returned an error while quietly inserting anyway.
+Post-test, queried Supabase directly: rows exist for exactly the cases that should have succeeded,
+and the adult-submitted guardian fields in case #17 came back `null` — confirming rejections never
+touched storage, and that unnecessary guardian PII isn't retained even when a client sends it.
 
 **What I cut, given the 1-hour window:**
 - The cohort → departure-date map is duplicated between `Frontend/src/data/trips.ts` and
@@ -257,8 +278,10 @@ storage, not just that they returned an error while quietly inserting anyway.
 - No automated test file committed (no `vitest`/`jest` added under time pressure) — proof is the
   reproducible `curl` requests above plus the pure-function leap-year check, both re-runnable
   against the live Backend.
-- No affirmative "I am the parent/guardian" checkbox beyond capturing name + email — the request
-  defined consent operationally as those two fields, so that's what was built.
+- `guardianConfirmed` is enforced at submission time but not separately audited later (e.g. no
+  timestamp/IP recorded specifically against the confirmation) — the row's existence with a
+  non-null `guardian_email` is the record; a dedicated consent-audit trail would be a real next
+  step if this went further than a fake-data exercise.
 - Didn't re-run this past Cursor/a second model — see the note below.
 
 **AI model note for Round 2:** solo Claude Sonnet 5, no handoff to a second model this round. The

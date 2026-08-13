@@ -18,6 +18,11 @@ const baseSchema = z.object({
   dateOfBirth: z.string().regex(ISO_DATE_PATTERN, "Enter a valid date of birth."),
   email: z.string().email("Enter a valid email address.").max(254),
   phone: z.string().regex(PHONE_PATTERN, "Enter a valid phone number."),
+  // For a minor, this IS the parent/guardian's name/phone — relabeled in
+  // the frontend UI, not a separate field. Avoids collecting two unrelated
+  // adults' worth of contact info and makes explicit (via UI copy +
+  // guardianConfirmed below) that a minor's emergency contact must be
+  // their parent/guardian, not just implied.
   emergencyContactName: z
     .string()
     .regex(NAME_PATTERN, "Enter a valid emergency contact name."),
@@ -25,10 +30,9 @@ const baseSchema = z.object({
     .string()
     .regex(PHONE_PATTERN, "Enter a valid emergency contact phone number."),
   // Only required for minors (enforced below in superRefine, since that's
-  // the only place we know the applicant's age-on-departure). Loosely typed
-  // here on purpose — sanitized/validated properly once we know it's needed.
-  guardianName: z.string().max(100).optional().or(z.literal("")),
+  // the only place we know the applicant's age-on-departure).
   guardianEmail: z.string().max(254).optional().or(z.literal("")),
+  guardianConfirmed: z.boolean().optional(),
   dietaryRestrictions: z
     .string()
     .max(300, "Keep this under 300 characters.")
@@ -42,6 +46,21 @@ const baseSchema = z.object({
   // Backend/api/signup.ts checks it before this schema even runs.
   website: z.string().max(200).optional().or(z.literal("")),
 });
+
+function ineligibleMessage(direction: "tooYoung" | "tooOld"): string {
+  if (direction === "tooYoung") {
+    return (
+      `For this trip, all Builders need to be between ${MIN_ELIGIBLE_AGE} and ${MAX_ELIGIBLE_AGE} ` +
+      `years old on departure. Please look into our domestic trips, or check back next year — ` +
+      `we'd love to have you when you're a bit older!`
+    );
+  }
+  return (
+    `For this trip, all Builders need to be between ${MIN_ELIGIBLE_AGE} and ${MAX_ELIGIBLE_AGE} ` +
+    `years old on departure. If you're interested in returning as a Trip Leader or exploring other ` +
+    `ways to get involved, reach out to our team — we'd love to have you back.`
+  );
+}
 
 export const signupSchema = baseSchema.superRefine((data, ctx) => {
   const dob = parseYMD(data.dateOfBirth);
@@ -85,28 +104,27 @@ export const signupSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["dateOfBirth"],
-      message: `Builders must be ${MIN_ELIGIBLE_AGE}–${MAX_ELIGIBLE_AGE} years old on the trip's departure date.`,
+      message: ineligibleMessage(ageAtDeparture < MIN_ELIGIBLE_AGE ? "tooYoung" : "tooOld"),
     });
     return;
   }
 
   if (ageAtDeparture < ADULT_AGE) {
-    const guardianName = data.guardianName?.trim() ?? "";
     const guardianEmail = data.guardianEmail?.trim() ?? "";
-
-    if (!guardianName || !NAME_PATTERN.test(guardianName)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["guardianName"],
-        message: "Guardian name is required for Builders under 18.",
-      });
-    }
 
     if (!guardianEmail || !z.string().email().safeParse(guardianEmail).success) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["guardianEmail"],
-        message: "A valid guardian email is required for Builders under 18.",
+        message: "A valid parent/guardian email is required for Builders under 18.",
+      });
+    }
+
+    if (!data.guardianConfirmed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["guardianConfirmed"],
+        message: "Please confirm the emergency contact is the applicant's parent or legal guardian.",
       });
     }
   }
@@ -130,12 +148,10 @@ export type SanitizedSignup = {
 };
 
 /**
- * Free-text fields (reason, dietary restrictions, guardian name) can't be
- * allowlisted the way names/phones are... actually guardian name IS
- * allowlisted (NAME_PATTERN, checked above) — only reason/dietary need
- * HTML-escaping. Strip control characters and HTML-encode before storage.
- * Defense in depth: the data is inert even if a future feature renders it
- * without re-escaping.
+ * Free-text fields (reason, dietary restrictions) can't be allowlisted the
+ * way names/phones are — strip control characters and HTML-encode before
+ * storage. Defense in depth: the data is inert even if a future feature
+ * renders it without re-escaping.
  */
 function sanitizeFreeText(input: string): string {
   const noControlChars = validator.stripLow(input.trim(), true /* keep \n, \t */);
@@ -157,7 +173,9 @@ export function sanitizeSignup(input: SignupInput): SanitizedSignup {
     phone: input.phone.trim(),
     emergencyContactName: input.emergencyContactName.trim(),
     emergencyContactPhone: input.emergencyContactPhone.trim(),
-    guardianName: isMinor ? input.guardianName!.trim() : null,
+    // Derived from emergencyContactName/guardianConfirmed rather than a
+    // separate form field — see the comment on baseSchema above.
+    guardianName: isMinor ? input.emergencyContactName.trim() : null,
     guardianEmail: isMinor
       ? validator.normalizeEmail(input.guardianEmail!.trim()) || input.guardianEmail!.trim().toLowerCase()
       : null,

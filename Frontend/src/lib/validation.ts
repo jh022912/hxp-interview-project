@@ -22,6 +22,11 @@ const signupFormObjectSchema = z.object({
   dateOfBirth: z.string().regex(ISO_DATE_PATTERN, "Enter your date of birth."),
   email: z.string().trim().email("Enter a valid email address."),
   phone: z.string().trim().regex(PHONE_PATTERN, "Enter a valid phone number."),
+  // For a minor, these fields are relabeled "Parent/guardian name/phone" in
+  // the UI and serve double duty — see SignUpForm.tsx and the README's
+  // Round 2 notes for why (avoids collecting two unrelated adults' worth
+  // of contact info, and makes explicit that a minor's emergency contact
+  // must be their parent/guardian, not just labeled as if it might be).
   emergencyContactName: z
     .string()
     .trim()
@@ -30,8 +35,8 @@ const signupFormObjectSchema = z.object({
     .string()
     .trim()
     .regex(PHONE_PATTERN, "Enter a valid phone number."),
-  guardianName: z.string().trim().max(100).optional().or(z.literal("")),
   guardianEmail: z.string().trim().max(254).optional().or(z.literal("")),
+  guardianConfirmed: z.boolean().optional(),
   dietaryRestrictions: z.string().trim().max(300, "Keep this under 300 characters.").optional(),
   reason: z
     .string()
@@ -48,7 +53,7 @@ export type SignupFormValues = z.infer<typeof signupFormObjectSchema>;
 /** Result of checking a birthdate against a specific cohort's departure date. */
 export type EligibilityResult =
   | { status: "eligible"; isMinor: boolean }
-  | { status: "ineligible"; eligibleCohorts: Cohort[] }
+  | { status: "ineligible"; direction: "tooYoung" | "tooOld"; eligibleCohorts: Cohort[] }
   | { status: "invalid" };
 
 export function checkEligibility(dateOfBirth: string, cohorts: Cohort[], cohortId: string): EligibilityResult {
@@ -73,7 +78,28 @@ export function checkEligibility(dateOfBirth: string, cohorts: Cohort[], cohortI
     return ageThere >= MIN_ELIGIBLE_AGE && ageThere <= MAX_ELIGIBLE_AGE;
   });
 
-  return { status: "ineligible", eligibleCohorts };
+  return { status: "ineligible", direction: age < MIN_ELIGIBLE_AGE ? "tooYoung" : "tooOld", eligibleCohorts };
+}
+
+export function ineligibleMessage(result: Extract<EligibilityResult, { status: "ineligible" }>): string {
+  const suggestion =
+    result.eligibleCohorts.length > 0
+      ? ` Based on this date of birth, you'd qualify for: ${result.eligibleCohorts.map((c) => c.dateRange).join(", ")}.`
+      : "";
+
+  if (result.direction === "tooYoung") {
+    return (
+      `For this trip, all Builders need to be between ${MIN_ELIGIBLE_AGE} and ${MAX_ELIGIBLE_AGE} ` +
+      `years old on departure. Please look into our domestic trips, or check back next year — ` +
+      `we'd love to have you when you're a bit older!${suggestion}`
+    );
+  }
+
+  return (
+    `For this trip, all Builders need to be between ${MIN_ELIGIBLE_AGE} and ${MAX_ELIGIBLE_AGE} ` +
+    `years old on departure. If you're interested in returning as a Trip Leader or exploring other ` +
+    `ways to get involved, reach out to our team — we'd love to have you back.${suggestion}`
+  );
 }
 
 /**
@@ -95,35 +121,30 @@ export function createSignupFormSchema(cohorts: Cohort[]) {
     }
 
     if (result.status === "ineligible") {
-      const suggestion =
-        result.eligibleCohorts.length > 0
-          ? ` Based on this date of birth, you'd qualify for: ${result.eligibleCohorts.map((c) => c.dateRange).join(", ")}.`
-          : "";
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["dateOfBirth"],
-        message: `Builders must be ${MIN_ELIGIBLE_AGE}–${MAX_ELIGIBLE_AGE} years old on the trip's departure date.${suggestion}`,
+        message: ineligibleMessage(result),
       });
       return;
     }
 
     if (result.isMinor) {
-      const guardianName = data.guardianName?.trim() ?? "";
       const guardianEmail = data.guardianEmail?.trim() ?? "";
-
-      if (!guardianName || !NAME_PATTERN.test(guardianName)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["guardianName"],
-          message: "Guardian name is required for Builders under 18.",
-        });
-      }
 
       if (!guardianEmail || !z.string().email().safeParse(guardianEmail).success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["guardianEmail"],
-          message: "A valid guardian email is required for Builders under 18.",
+          message: "A valid parent/guardian email is required for Builders under 18.",
+        });
+      }
+
+      if (!data.guardianConfirmed) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardianConfirmed"],
+          message: "Please confirm the contact above is your parent or legal guardian.",
         });
       }
     }
